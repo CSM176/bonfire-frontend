@@ -1,0 +1,216 @@
+// ImageUpload.js
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { Flex, Image, Text, Button, Box, Input, FormControl, Select, Textarea, VStack, Heading, Divider, Grid, Center } from '@chakra-ui/react';
+
+const dropzoneStyles = {
+  border: '2px dashed #ccc',
+  borderRadius: '7px',
+  padding: '20px',
+  textAlign: 'center',
+  width: '100%',
+  cursor: 'pointer',
+};
+
+const ImageUpload = ({ deviceName, repairimage }) => {
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [quoteText, setQuoteText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const onDrop = useCallback((acceptedFiles) => {
+    const filesWithPreview = acceptedFiles.map(file =>
+      Object.assign(file, {
+        preview: URL.createObjectURL(file)
+      })
+    );
+    setSelectedFiles(prevFiles => [...prevFiles, ...filesWithPreview]);
+  }, []);
+
+  const removeFile = (file) => {
+    setSelectedFiles(prevFiles => prevFiles.filter(f => f !== file));
+    URL.revokeObjectURL(file.preview); // Clean up the preview URL
+  };
+
+  const handleQuoteChange = (event) => {
+    setQuoteText(event.target.value);
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0 || !quoteText) {
+      alert('Please select files and enter a quote.');
+      return;
+    }
+
+    setIsLoading(true);
+    const formData = new FormData();
+    selectedFiles.forEach(file => formData.append('files', file));
+
+    try {
+      // Upload the images
+      const uploadResponse = await fetch('http://localhost:1337/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Image upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+      const imageIds = uploadData.map(file => file.id);
+
+      // Create a new quote with the uploaded images
+      const quoteResponse = await fetch('http://localhost:1337/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: {
+            Name: quoteText,
+            DevicePhotos: imageIds,
+          },
+        }),
+      });
+
+      if (!quoteResponse.ok) {
+        throw new Error('Quote creation failed');
+      }
+
+      const quoteData = await quoteResponse.json();
+      console.log('Quote created successfully:', quoteData);
+      setQuoteText('');
+      setSelectedFiles([]);
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    handleUpload();
+  };
+
+  return (
+    <Box display="flex" minHeight="100vh">
+      <Box
+        flex="0.5"
+        position="relative"
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        bgImage={repairimage}
+        bgPosition="center"
+        bgRepeat="no-repeat"
+        bgSize="cover"
+        _before={{
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          bgGradient: 'linear(to-l, rgba(29, 29, 29, 1), rgba(29, 29, 29, 0.6))'
+        }}
+      >
+        <Text position="relative" fontSize="6vw" color="white" fontFamily="Cocogoose" lineHeight="6vw" textAlign="center">
+          Start a Repair
+        </Text>
+      </Box>
+      <Grid
+        flex="1"
+        flexDirection="column"
+        justifyContent="center"
+        bg="bg.300"
+        color="white"
+        padding="8"
+        h="100vh"
+        gridTemplateRows="2fr 3fr 2fr"
+      >
+        <VStack mt="2vw">
+          <Heading fontFamily="Cocogoose" fontSize="3vw">{deviceName} Repair</Heading>
+          <Divider />
+          <Text mb="8" fontSize="1.1rem" textAlign="center">
+            Next, we'll just need some information about your problem.
+          </Text>
+        </VStack>
+        <Flex flexDir="column" width="100%" as="form" onSubmit={handleSubmit}>
+          <Flex width="100%" gap="1vw" mb="4">
+            <Box flexDir="row" flex="1">
+              <FormControl id="device-type" mb="4">
+                <Select
+                  variant="filled"
+                  placeholder="Select problem type"
+                  bg="bg.400"
+                  color="white"
+                  _placeholder={{ color: 'gray.500' }}
+                  onChange={handleQuoteChange}
+                  name="device-type"
+                  required
+                  sx={{
+                    '> option': {
+                      background: 'bg.400',
+                    },
+                  }}
+                >
+                  <option value="Phone">Phone</option>
+                  <option value="Laptop">Laptop</option>
+                  <option value="Desktop">Desktop</option>
+                  <option value="Other">Other</option>
+                </Select>
+              </FormControl>
+              <FormControl id="problem-description">
+                <Textarea
+                  minH="25vh"
+                  type="text"
+                  placeholder="Please describe your issue."
+                  variant="filled"
+                  bg="bg.400"
+                  color="white"
+                  name="problem-description"
+                  required
+                  onChange={handleQuoteChange}
+                />
+              </FormControl>
+            </Box>
+            <Flex
+              borderRadius="7px"
+              flex="1"
+              bg="bg.400"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <div {...getRootProps()} style={dropzoneStyles}>
+                <input {...getInputProps()} />
+                {selectedFiles.length > 0 ? (
+                  <Flex direction="column">
+                    {selectedFiles.map((file, index) => (
+                      <Flex key={index} alignItems="center" mt="2">
+                        <Image src={file.preview} alt="Preview" boxSize="100px" objectFit="cover" mr="2" />
+                        <Text>{file.name}</Text>
+                        <Button ml="2" size="sm" onClick={() => removeFile(file)}>Remove</Button>
+                      </Flex>
+                    ))}
+                  </Flex>
+                ) : (
+                  <p>Drag 'n' drop some files here, or click to select files</p>
+                )}
+              </div>
+            </Flex>
+          </Flex>
+          <Center>
+            <Button colorScheme="red" bgColor="highlight.500" size="lg" mt="4" type="submit" isLoading={isLoading}>
+              Next
+            </Button>
+          </Center>
+        </Flex>
+      </Grid>
+    </Box>
+  );
+};
+
+export default ImageUpload;

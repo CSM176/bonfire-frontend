@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Cocogoose";
+  src: url("../public/fonts/Cocogoose.woff2");
+}
+
+@font-face {
+  font-family: "CocogooseBold";
+  src: url("../public/fonts/CocogooseBold.woff2");
+}
+
+* {
+  padding-top: 0px;
+  margin-top: 0px;
+  padding-bottom: 0px;
+  margin-bottom: 0px;
+}
+
+
+
+.mainHeader {
+  height: 10vh;
+  box-shadow: 0px 2px 4px #290000;
+  padding-left: 1vw;
+  padding-right: 1vw;
+}
+
+.sidebutton {
+  width: 50%;
+}
+
+.control-dots {
+  margin-top: 1vh;
+}
+
+.enquiryType > option {
+  background-color: #290000;
+}
